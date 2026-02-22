@@ -11,15 +11,14 @@ services:
     restart: unless-stopped
     networks:
       - observability
-  promtail:
-    image: grafana/promtail:2.9.0
-    container_name: promtail
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
+    user: root
     volumes:
-      - ./promtail/config.yml:/etc/promtail/config.yml
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: -config.file=/etc/promtail/config.yml
-    depends_on:
-      - loki
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: run /etc/alloy/config.alloy
     restart: unless-stopped
     networks:
       - observability
@@ -31,9 +30,13 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_SERVER_ROOT_URL=http://localhost:3000
     volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
+    - grafana_data:/var/lib/grafana
+    - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    - ./grafana/provisioning:/etc/grafana/provisioning
     ports:
       - "3000:3000"
     depends_on:
@@ -45,6 +48,7 @@ services:
 networks:
   observability:
     driver: bridge
+
 
 volumes:
   loki_data:

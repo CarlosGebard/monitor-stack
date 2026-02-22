@@ -15,4 +15,4 @@ docker run --rm \
   -v grafana_data:/volume \
   -v $(pwd)/backups/$DATE:/backup \
   alpine \
-  tar czf /backup/grafana.tar.gz -C /volume .
+  tar czf /backup/grafana.tar.gz -C /volume .1
