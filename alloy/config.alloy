@@ -1,0 +1,81 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+discovery.docker "local" {
+  host = "unix:///var/run/docker.sock"
+
+  // Opcional: filtra solo contenedores corriendo
+  filter {
+    name   = "status"
+    values = ["running"]
+  }
+}
+
+// Relabel: convierte los __meta_docker_* en labels utilizables
+discovery.relabel "docker_labels" {
+  targets = discovery.docker.local.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_image"]
+    target_label  = "image"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_id"]
+    target_label  = "container_id"
+  }
+
+  // Captura labels de Docker como compose_project y compose_service si usas Compose
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "compose_service"
+  }
+}
+
+loki.source.docker "docker" {
+  host    = "unix:///var/run/docker.sock"
+  targets = discovery.relabel.docker_labels.output  // <-- usa los targets ya relabeleados
+
+  forward_to = [loki.process.enrich.receiver]
+}
+
+loki.process "enrich" {
+  // Labels estáticos para identificar el job
+  stage.static_labels {
+    values = {
+      job = "docker",
+    }
+  }
+
+  // Extrae labels dinámicos que vienen del relabeling anterior
+  stage.labels {
+    values = {
+      container       = "container",
+      image           = "image",
+      container_id    = "container_id",
+      compose_project = "compose_project",
+      compose_service = "compose_service",
+    }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
