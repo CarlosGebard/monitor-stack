@@ -19,21 +19,16 @@ jobs:
           script: |
             set -euo pipefail
 
-            APP_DIR="/opt/monitor-stack"
+            APP_DIR="/home/deploy/monitor-stack"
             REPO_URL="git@github.com:CarlosGebard/monitor-stack.git"
-
-            if [ ! -d "$APP_DIR" ]; then
-              mkdir -p "$APP_DIR"
-            fi
 
             if [ ! -d "$APP_DIR/.git" ]; then
               git clone "$REPO_URL" "$APP_DIR"
-            else
-              cd "$APP_DIR"
-              git fetch origin
-              git reset --hard origin/main
             fi
 
             cd "$APP_DIR"
+            git fetch origin
+            git reset --hard origin/main
+
             docker compose pull
             docker compose up -d --remove-orphans
