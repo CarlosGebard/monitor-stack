@@ -1,12 +1,16 @@
 name: Deploy
+
 on:
   push:
     branches: [main]
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: appleboy/ssh-action@v1.0.3
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -14,11 +18,22 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -euo pipefail
-            if [ ! -d "/opt/monitor-stack/.git" ]; then
-              git clone ${{ secrets.REPO_URL }} /opt/monitor-stack
+
+            APP_DIR="/opt/monitor-stack"
+            REPO_URL="git@github.com:CarlosGebard/monitor-stack.git"
+
+            if [ ! -d "$APP_DIR" ]; then
+              mkdir -p "$APP_DIR"
             fi
 
-            cd /opt/monitor-stack
-            git pull origin main
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone "$REPO_URL" "$APP_DIR"
+            else
+              cd "$APP_DIR"
+              git fetch origin
+              git reset --hard origin/main
+            fi
+
+            cd "$APP_DIR"
             docker compose pull
             docker compose up -d --remove-orphans
